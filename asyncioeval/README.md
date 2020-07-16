@@ -19,6 +19,7 @@ python3 ticker.py -t ticker.json -c 100 -p 1
 Synchronous mode with four process
 
 python3 ticker.py -t ticker.json -c 300 -p 4
+
 20:48:47 INFO:Ticker: Processing sync 300 tickers
 20:48:47 INFO:Ticker: Spawning 4 gatherers...
 20:48:47 INFO:Ticker: Ticker-2 processing sync 75 tickers
