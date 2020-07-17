@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger("Ticker")
 
 class Ticker(multiprocessing.Process):
-    ''' Ticker class fetches stocker ticker daily data from Yahoo. '''
+    ''' Ticker class fetches stocker ticker daily data. '''
     def __init__(self, task_queue, result_queue,
                  burl, uparams, odir, mode):
         multiprocessing.Process.__init__(self)
