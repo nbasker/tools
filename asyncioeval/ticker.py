@@ -67,23 +67,26 @@ class Ticker(multiprocessing.Process):
         for r in results:
             self.result_queue.put(r)
 
-    def syncprocess(self, ticker):
-        url = f'{self.base_url}{ticker}'
-        logger.debug(f'{self.name} http-get for {url}')
-        resp = requests.get(url, params=self.params)
-        if resp.status_code != requests.codes.ok:
-            logger.error(f'{self.name}:{ticker} failed, status={resp.status_code}')
-            return f'{ticker} fetch failed'
-        data = resp.text
-        fname = f'{self.odir}/{ticker}.csv'
-        with open(fname, 'w') as file:
-            file.write(data)
-        return f'{ticker} fetch succeeded'
+    def syncprocess(self, tickers: list) -> None:
+        for ticker in tickers:
+            url = f'{self.base_url}{ticker}'
+            logger.debug(f'{self.name} http-get for {url}')
+            resp = requests.get(url, params=self.params)
+            if resp.status_code != requests.codes.ok:
+                logger.error(f'{self.name}:{ticker} failed, status={resp.status_code}')
+                self.result_queue.put(f'{ticker} fetch failed')
+                continue
+            data = resp.text
+            fname = f'{self.odir}/{ticker}.csv'
+            with open(fname, 'w') as file:
+                file.write(data)
+            self.result_queue.put(f'{ticker} fetch succeeded')
 
     def run(self):
         pname = self.name
         tickers = []
 
+        # Get all tasks
         while True:
             t = self.task_queue.get()
             if t is None:
@@ -98,9 +101,7 @@ class Ticker(multiprocessing.Process):
         if self.mode == "async":
             asyncio.run(self.asyncio_sessions(tickers))
         else:
-            for t in tickers:
-                res = self.syncprocess(t)
-                self.result_queue.put(res)
+            self.syncprocess(tickers)
 
         # Respond to None received in task_queue
         self.task_queue.task_done()
