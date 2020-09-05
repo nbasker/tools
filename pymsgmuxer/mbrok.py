@@ -30,8 +30,8 @@ class ConsumerInfo:
     pcount: int
     lastnode: MsgNode
 
-class MsgChannel:
-    '''Message Channel'''
+class MsgQueue:
+    '''Message Queue'''
 
     begin_mark = "BeginMarker"
     end_mark = "EndMarker"
@@ -43,8 +43,8 @@ class MsgChannel:
         self._cleanfreq = cleanfreq
 
         # Using Begin and End Marker
-        self._lhead = MsgNode(msgid=0, msg=MsgChannel.begin_mark)
-        self._ltail = MsgNode(msgid=0, msg=MsgChannel.end_mark)
+        self._lhead = MsgNode(msgid=0, msg=MsgQueue.begin_mark)
+        self._ltail = MsgNode(msgid=0, msg=MsgQueue.end_mark)
         self._lhead.next = self._ltail
         self._linsp = self._lhead
 
@@ -78,7 +78,7 @@ class MsgChannel:
         # Get to be visiting node for cid
         node = self._cinfo[cid].lastnode
         node = node.next
-        if not node or node.data == MsgChannel.end_mark:
+        if not node or node.data == MsgQueue.end_mark:
             return retmsg
 
         retmsg = node.data
@@ -115,35 +115,35 @@ class MsgChannel:
         return cstatus, cids
 
     def _print_status(self):
-        result = "Msg Channel Status:\n"
+        result = "Msg Queue Status:\n"
         result += f'total = {self._seqid}, current = {self._currcnt}\n'
         #result += f'lhead: {self._lhead}, ltail: {self._ltail}\n'
-        walker = self._lhead.next
-        while walker.data != MsgChannel.end_mark:
+        # walker = self._lhead.next
+        # while walker.data != MsgQueue.end_mark:
             # result += f'  {walker!r}\n'
-            walker = walker.next
+            # walker = walker.next
         result += f'consumer count = {len(self._cinfo.keys())}\n'
-        for ckey, cdict in self._cinfo.items():
-            result += f'  {ckey}: count={cdict.pcount}, last-msg={cdict.lastnode!r}\n'
+        # for ckey, cdict in self._cinfo.items():
+        #     result += f'  {ckey}: count={cdict.pcount}, last-msg={cdict.lastnode!r}\n'
         print(result)
 
     async def cleanqueue(self):
         '''task to clean old messages'''
         procid = os.getpid()
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
-        print(f'{tstamp}: Pid[{procid}] MsgChannel clean task begins...')
+        print(f'{tstamp}: Pid[{procid}] MsgQueue clean task begins...')
         while True:
             await asyncio.sleep(self._cleanfreq)
-            dbgmsg = ""
+            # dbgmsg = ""
             rtime = datetime.utcnow() - timedelta(seconds=self._retention)
             rtimeint = int(rtime.timestamp() * 1000000)
 
             walker = self._lhead.next
             rcount = 0
-            while walker.data != MsgChannel.end_mark and walker.ts < rtimeint:
+            while walker.data != MsgQueue.end_mark and walker.ts < rtimeint:
                 allconsume, cids = self._is_consumed(walker)
                 if not allconsume:
-                    dbgmsg = f'{cids} is yet to consume {walker!r}'
+                    # dbgmsg = f'{cids} is yet to consume {walker!r}'
                     break
                 self._lhead.next = walker.next
                 walker.next = None
@@ -152,12 +152,12 @@ class MsgChannel:
                 self._currcnt -= 1
                 rcount += 1
 
-            rtimestr = rtime.strftime("%a, %d %b %Y %H:%M:%S.%f")
-            if not dbgmsg:
-                dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}'
-            else:
-                dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}\n' + dbgmsg
-            print(dbgmsg)
+            # rtimestr = rtime.strftime("%a, %d %b %Y %H:%M:%S.%f")
+            # if not dbgmsg:
+            #     dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}'
+            # else:
+            #     dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}\n' + dbgmsg
+            # print(dbgmsg)
             self._print_status()
 
 class Producer:
@@ -250,7 +250,7 @@ async def aio_sessions(loop):
     print(f'Pid[{procid}]: asyncio session...')
 
     # Create message queue, producers and consumers
-    mqueue = MsgChannel(retention=30, cleanfreq=10)
+    mqueue = MsgQueue(retention=30, cleanfreq=10)
     pro1 = Producer(instid=1, nmsgs=25, msgq=mqueue, rwindow=[2, 3])
     pro2 = Producer(instid=2, nmsgs=15, msgq=mqueue, rwindow=[1, 5])
     pro3 = Producer(instid=3, nmsgs=5, msgq=mqueue, rwindow=[1, 2])
