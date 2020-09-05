@@ -69,6 +69,7 @@ type MsgQueue struct {
 	sync.Mutex
 	msglist              *list.List
 	retention, cleanfreq int
+	bulkcount            int
 	seqid, currcnt       uint64
 	pinfo                map[string]*producerInfo
 	cinfo                map[string]*consumerInfo
@@ -80,6 +81,7 @@ func NewMsgQueue(retention, cleanfreq int) *MsgQueue {
 		msglist:   list.New(),
 		retention: retention,
 		cleanfreq: cleanfreq,
+		bulkcount: 10,
 		seqid:     0,
 		currcnt:   0,
 		pinfo:     make(map[string]*producerInfo),
@@ -130,28 +132,37 @@ func (m *MsgQueue) RecvFromProducers() {
 
 	for {
 		m.Lock()
-		// From producer channel, read and add to message q
+
+		nump := len(m.pinfo)
+		// fmt.Printf("Num producers = %d\n", nump)
+		cases := make([]reflect.SelectCase, nump+1)
+		pids := make([]string, nump+1)
+		i := 0
 		for pid, pi := range m.pinfo {
-			// fmt.Printf("%s: checking for msg from producer...\n", pid)
-			var mnode MsgNode
-			ok := true
-			timedout := false
-			select {
-			case mnode, ok = <-pi.mch:
-			default:
-				timedout = true
-			}
-			if ok {
-				if !timedout {
-					m.Put(pid, &mnode)
-					pi.pcount++
-					// fmt.Printf("%s: found, pcount=%d\n", pid, pi.pcount)
+			cases[i] = reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(pi.mch), Send: reflect.ValueOf(nil)}
+			pids[i] = pid
+			i++
+		}
+
+		if nump > 0 {
+			cases[i] = reflect.SelectCase{Dir: reflect.SelectDefault, Chan: reflect.ValueOf(nil), Send: reflect.ValueOf(nil)}
+			pids[i] = "default_timeout"
+
+			for i = 0; i < m.bulkcount; i++ {
+				idx, v, ok := reflect.Select(cases)
+				// fmt.Printf("reflect.Select(): idx=%d, ok=%t\n", idx, ok)
+				if ok && idx != nump {
+					var mnode MsgNode
+					mnode = v.Interface().(MsgNode)
+					m.Put(pids[idx], &mnode)
+					m.pinfo[pids[idx]].pcount++
 				}
 			}
 		}
+
 		m.Unlock()
-		//fmt.Printf("Pid[%d] MsgQueue.RecvFromProducers() msg count = %d\n", procid, m.seqid)
-		//time.Sleep(1 * time.Second)
+		// fmt.Printf("Pid[%d] MsgQueue.RecvFromProducers() msg count = %d\n", procid, m.seqid)
+		// time.Sleep(1 * time.Second)
 	}
 }
 
@@ -247,6 +258,7 @@ func (m *MsgQueue) PrintStats() {
 	}
 	***/
 	fmt.Printf("consumer count = %d\n", len(m.cinfo))
+	/***
 	for cid, ci := range m.cinfo {
 		s := ""
 		if ci.lastnode != nil {
@@ -254,6 +266,7 @@ func (m *MsgQueue) PrintStats() {
 		}
 		fmt.Printf("%s: count=%d %s\n", cid, ci.pcount, s)
 	}
+	***/
 }
 
 // isConsumed checks if all consumers processed a element
@@ -313,7 +326,7 @@ func (m *MsgQueue) CleanQueue() {
 			m.currcnt--
 		}
 		m.Unlock()
-		fmt.Printf("Removing %d nodes, retention time %d\n", rcount, rtime)
+		// fmt.Printf("Removing %d nodes, retention time %d\n", rcount, rtime)
 		m.PrintStats()
 	}
 }
@@ -412,8 +425,8 @@ func (p *Producer) Close() {
 }
 
 func main() {
-	var pwg sync.WaitGroup
-	var cwg sync.WaitGroup
+	var pwg sync.WaitGroup // producer wait group
+	var cwg sync.WaitGroup // consumer wait group
 
 	mq := NewMsgQueue(30, 10)
 	pwg.Add(1)
