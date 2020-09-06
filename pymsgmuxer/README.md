@@ -1,17 +1,15 @@
-# Python Message Multiplexer
+# Python Asynchronous Message Multiplexer
 
-The mbrok.py implements a message queue using asyncio constructs.
-The message queue is implemented as a linked list and cleans up after a retention period.
-It is possible to have multiple producers and consumers operating at the sametime.
-The consumers and producers can come alive and leave subscriptions at randome times.
-The message queue serializes messages from multiple producers and replicates to all consumers.
+The mbrok.py implements an asyncio session that installs producers, consumers and message-queue. The producers push messages into the queue and the consumers read from the queue. The producers and consumers can operate independently and in this case implemented as a coroutine. 
 
-Need to add details on lockless feature using asyncio await Python feature.
+The message queue (mq.py) is implemented as a singly linked list. The list grows and shrinks based on the production and consumption rate of the messages. At a given point of time, all consumed messages at given time that is beyond a configurable retention time is deleted. Linked list is a suitable data structure for insertion and deletion. Every consumer's last consumed message is tracked independently.
+
+The producers and consumers can come alive and leave by registering and unregistering with the message queue. The message queue serializes the messages and ensures that ordering is maintained for a given producer. Every message produced shall be replicated and given to all consumers.
+
+Each producer, consumer operates as an async-coroutine. The message queue cleaner is also a separate coroutine. The coroutines does cooperative execution by calling await operations. Since there is coperative scheduling, explicit lock protection of the message queue is not required.
 
 ## Usage
 
-This can be run as a service or within a service by exposing API to push and pull data.
+The producer's produce() function can be implemented by each subclass and can fetch the data from memory, file-system, socket or any other method. Similarly the consumer's consume() function is independent to the operation needed. 
 
-## Example
-
-Work In Progress
+The producer's, consumer's and message-queue can be used in an async session to multiplex the messages.
