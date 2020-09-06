@@ -3,6 +3,7 @@
 import os
 import random
 import asyncio
+from abc import ABC, abstractmethod
 from datetime import datetime
 from datetime import timedelta
 from dataclasses import dataclass
@@ -160,7 +161,15 @@ class MsgQueue:
             # print(dbgmsg)
             self._print_status()
 
-class Producer:
+class Producer(ABC):
+    '''Producer/Publisher base class'''
+
+    @abstractmethod
+    async def produce(self):
+        '''produce abstract method for producing data'''
+        pass
+
+class InMemProducer(Producer):
     '''Producer/Publisher module'''
     def __init__(self, instid, nmsgs, msgq, rwindow):
         self._instid = instid
@@ -183,30 +192,34 @@ class Producer:
         if not rval:
             print(f'{self._pname} put message failed id: {msgid}')
 
-    async def process(self):
+    async def produce(self):
         '''Process function doing main work of producing messages'''
         procid = os.getpid()
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
         print(f'{tstamp}: Pid[{procid}] {self._pname} begins...')
         low, high = self._rw
-        fname = "{}.txt".format(self._pname)
-        fdesc = await aiofiles.open(fname, 'w')
 
         for _ in range(self._num_msgs):
             # Do processing and create message
             await asyncio.sleep(random.randint(low, high))
 
             msgid, msg = self.create_msg()
-            await fdesc.write("{}: {}\n".format(msgid, msg))
 
             # Put message in the queue
             self.put_msg(msgid=msgid, msg=msg)
 
-        fdesc.close()
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
         print(f'{tstamp}: Pid[{procid}] {self._pname} done, generated {self._num_msgs} msgs')
 
-class Consumer:
+class Consumer(ABC):
+    '''Consumer/Subscriber base class'''
+
+    @abstractmethod
+    async def consume(self):
+        '''consume abstract method for consuming data'''
+        pass
+
+class ConsumerFileWriter(Consumer):
     '''Consumer/Subscriber module'''
     def __init__(self, instid, msgq, rwindow):
         self._instid = instid
@@ -222,7 +235,7 @@ class Consumer:
             self._mcount += 1
         return msg
 
-    async def process(self):
+    async def consume(self):
         '''The process() function doing the main work of consumer'''
         procid = os.getpid()
         low, high = self._rw
@@ -251,19 +264,19 @@ async def aio_sessions(loop):
 
     # Create message queue, producers and consumers
     mqueue = MsgQueue(retention=30, cleanfreq=10)
-    pro1 = Producer(instid=1, nmsgs=25, msgq=mqueue, rwindow=[2, 3])
-    pro2 = Producer(instid=2, nmsgs=15, msgq=mqueue, rwindow=[1, 5])
-    pro3 = Producer(instid=3, nmsgs=5, msgq=mqueue, rwindow=[1, 2])
-    con1 = Consumer(instid=1, msgq=mqueue, rwindow=[1, 4])
-    con2 = Consumer(instid=2, msgq=mqueue, rwindow=[2, 3])
-    con3 = Consumer(instid=3, msgq=mqueue, rwindow=[2, 4])
+    pro1 = InMemProducer(instid=1, nmsgs=25, msgq=mqueue, rwindow=[2, 3])
+    pro2 = InMemProducer(instid=2, nmsgs=15, msgq=mqueue, rwindow=[1, 5])
+    pro3 = InMemProducer(instid=3, nmsgs=5, msgq=mqueue, rwindow=[1, 2])
+    con1 = ConsumerFileWriter(instid=1, msgq=mqueue, rwindow=[1, 4])
+    con2 = ConsumerFileWriter(instid=2, msgq=mqueue, rwindow=[2, 3])
+    con3 = ConsumerFileWriter(instid=3, msgq=mqueue, rwindow=[2, 4])
 
     # Shuffle to start in random order
     funcs = []
-    funcs.append(pro1.process())
-    funcs.append(pro2.process())
-    funcs.append(con1.process())
-    funcs.append(con2.process())
+    funcs.append(pro1.produce())
+    funcs.append(pro2.produce())
+    funcs.append(con1.consume())
+    funcs.append(con2.consume())
     funcs.append(mqueue.cleanqueue())
     random.shuffle(funcs)
 
@@ -279,9 +292,9 @@ async def aio_sessions(loop):
 
     # Start later consumer and producer respectively
     await asyncio.sleep(35)
-    tasks.append(loop.create_task(con3.process()))
+    tasks.append(loop.create_task(con3.consume()))
     await asyncio.sleep(10)
-    producer_tasks.append(loop.create_task(pro3.process()))
+    producer_tasks.append(loop.create_task(pro3.produce()))
 
     # Wait for all producers to complete
     await asyncio.gather(*producer_tasks)
