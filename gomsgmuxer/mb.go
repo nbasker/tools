@@ -331,8 +331,13 @@ func (m *MsgQueue) CleanQueue() {
 	}
 }
 
-// Consumer definition
-type Consumer struct {
+// ConsumerInterface definition
+type ConsumerInterface interface {
+	Consume() bool
+}
+
+// ConsumerFileWriter definition
+type ConsumerFileWriter struct {
 	instid   int
 	msgcount int
 	cname    string
@@ -341,9 +346,9 @@ type Consumer struct {
 	wg       *sync.WaitGroup
 }
 
-// NewConsumer creates a Consumer
-func NewConsumer(id int, mq *MsgQueue, wg *sync.WaitGroup) *Consumer {
-	return &Consumer{
+// NewConsumerFileWriter creates a Consumer
+func NewConsumerFileWriter(id int, mq *MsgQueue, wg *sync.WaitGroup) *ConsumerFileWriter {
+	return &ConsumerFileWriter{
 		instid:   id,
 		msgcount: 0,
 		cname:    "consumer_" + strconv.Itoa(id),
@@ -354,7 +359,7 @@ func NewConsumer(id int, mq *MsgQueue, wg *sync.WaitGroup) *Consumer {
 }
 
 // Consume reads the msgs channel
-func (c *Consumer) Consume() {
+func (c *ConsumerFileWriter) Consume() bool {
 	defer c.wg.Done()
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
@@ -370,15 +375,21 @@ func (c *Consumer) Consume() {
 		fmt.Fprintf(f, "%s: %s", c.cname, m.PrintMsgNodeStr())
 	}
 	fmt.Printf("consume for %s : Done\n", c.cname)
+	return true
 }
 
 // Close and unregister with queue
-func (c *Consumer) Close() {
+func (c *ConsumerFileWriter) Close() {
 	c.mq.UnregisterConsumer(c.cname)
 }
 
-// Producer definition
-type Producer struct {
+// ProducerInterface definition
+type ProducerInterface interface {
+	Produce() bool
+}
+
+// InMemProducer definition
+type InMemProducer struct {
 	instid    int
 	totalmsgs int
 	pname     string
@@ -387,9 +398,9 @@ type Producer struct {
 	wg        *sync.WaitGroup
 }
 
-// NewProducer creates a Producer
-func NewProducer(id, nmsgs int, mq *MsgQueue, wg *sync.WaitGroup) *Producer {
-	return &Producer{
+// NewInMemProducer creates a InMemProducer
+func NewInMemProducer(id, nmsgs int, mq *MsgQueue, wg *sync.WaitGroup) *InMemProducer {
+	return &InMemProducer{
 		instid:    id,
 		totalmsgs: nmsgs,
 		pname:     "producer_" + strconv.Itoa(id),
@@ -400,7 +411,7 @@ func NewProducer(id, nmsgs int, mq *MsgQueue, wg *sync.WaitGroup) *Producer {
 }
 
 // Produce creates and sends the message through msgs channel
-func (p *Producer) Produce() {
+func (p *InMemProducer) Produce() bool {
 	defer p.wg.Done()
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
@@ -416,10 +427,11 @@ func (p *Producer) Produce() {
 		p.mch <- *mnode
 	}
 	fmt.Printf("produce for %s : Done\n", p.pname)
+	return true
 }
 
 // Close and unregister with queue
-func (p *Producer) Close() {
+func (p *InMemProducer) Close() {
 	close(p.mch)
 	p.mq.UnregisterProducer(p.pname)
 }
@@ -430,18 +442,18 @@ func main() {
 
 	mq := NewMsgQueue(30, 10)
 	pwg.Add(1)
-	pro1 := NewProducer(1, 25, mq, &pwg)
+	pro1 := NewInMemProducer(1, 25, mq, &pwg)
 	pwg.Add(1)
-	pro2 := NewProducer(2, 15, mq, &pwg)
+	pro2 := NewInMemProducer(2, 15, mq, &pwg)
 	pwg.Add(1)
-	pro3 := NewProducer(3, 5, mq, &pwg)
+	pro3 := NewInMemProducer(3, 5, mq, &pwg)
 
 	cwg.Add(1)
-	con1 := NewConsumer(1, mq, &cwg)
+	con1 := NewConsumerFileWriter(1, mq, &cwg)
 	cwg.Add(1)
-	con2 := NewConsumer(2, mq, &cwg)
+	con2 := NewConsumerFileWriter(2, mq, &cwg)
 	cwg.Add(1)
-	con3 := NewConsumer(3, mq, &cwg)
+	con3 := NewConsumerFileWriter(3, mq, &cwg)
 
 	fmt.Println("Starting MsgQueue go routines...")
 	go mq.RecvFromProducers()
