@@ -6,6 +6,9 @@ import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
 import aiofiles
+import base_logger
+
+logger = base_logger.getlogger(__name__)
 
 class Consumer(ABC):
     '''Consumer/Subscriber base class'''
@@ -38,7 +41,7 @@ class ConsumerFileWriter(Consumer):
 
         # Register with the queue
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
-        print(f'{tstamp}: Pid[{procid}] {self._pname} begins...')
+        logger.info("%s: Pid[%d] %s beings...", tstamp, procid, self._pname)
         self._mq.register_consumer(self._pname)
 
         fname = "{}.txt".format(self._pname)

@@ -5,6 +5,9 @@ import asyncio
 from datetime import datetime
 from datetime import timedelta
 from dataclasses import dataclass
+import base_logger
+
+logger = base_logger.getlogger(__name__)
 
 class MsgNode:
     '''Message Node'''
@@ -89,7 +92,7 @@ class MsgQueue:
     def register_consumer(self, cid):
         '''add consumer using the queue'''
         if cid in self._cinfo:
-            print(f'consumer {cid} already registered, exception/error')
+            logger.info("consumer %s already registered, exception/error", cid)
             return False
 
         # Initialize dict to store list head and count processed
@@ -113,26 +116,26 @@ class MsgQueue:
         return cstatus, cids
 
     def _print_status(self):
-        result = "Msg Queue Status:\n"
-        result += f'total = {self._seqid}, current = {self._currcnt}\n'
+        result = "Msg Queue Status: "
+        result += f'total = {self._seqid}, current = {self._currcnt}, '
         #result += f'lhead: {self._lhead}, ltail: {self._ltail}\n'
         # walker = self._lhead.next
         # while walker.data != MsgQueue.end_mark:
             # result += f'  {walker!r}\n'
             # walker = walker.next
-        result += f'consumer count = {len(self._cinfo.keys())}\n'
+        result += f'consumer count = {len(self._cinfo.keys())}'
         # for ckey, cdict in self._cinfo.items():
         #     result += f'  {ckey}: count={cdict.pcount}, last-msg={cdict.lastnode!r}\n'
-        print(result)
+        logger.info("%s", result)
 
     async def cleanqueue(self):
         '''task to clean old messages'''
         procid = os.getpid()
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
-        print(f'{tstamp}: Pid[{procid}] MsgQueue clean task begins...')
+        logger.info("%s: Pid[%d] MsgQueue clean task begins...", tstamp, procid)
         while True:
             await asyncio.sleep(self._cleanfreq)
-            # dbgmsg = ""
+            dbgmsg = ""
             rtime = datetime.utcnow() - timedelta(seconds=self._retention)
             rtimeint = int(rtime.timestamp() * 1000000)
 
@@ -141,19 +144,20 @@ class MsgQueue:
             while walker.data != MsgQueue.end_mark and walker.ts < rtimeint:
                 allconsume, cids = self._is_consumed(walker)
                 if not allconsume:
-                    # dbgmsg = f'{cids} is yet to consume {walker!r}'
+                    dbgmsg = f'{cids} is yet to consume {walker!r}'
                     break
                 self._lhead.next = walker.next
                 walker.next = None
-                # print(f'Removing {walker!r}')
+                dmesg = f'Removing {walker!r}'
+                logger.debug("%s", dmesg)
                 walker = self._lhead.next
                 self._currcnt -= 1
                 rcount += 1
 
-            # rtimestr = rtime.strftime("%a, %d %b %Y %H:%M:%S.%f")
-            # if not dbgmsg:
-            #     dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}'
-            # else:
-            #     dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}\n' + dbgmsg
-            # print(dbgmsg)
+            rtimestr = rtime.strftime("%a, %d %b %Y %H:%M:%S.%f")
+            if not dbgmsg:
+                dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}'
+            else:
+                dbgmsg = f'Removing {rcount} nodes, retention time: {rtimestr}\n' + dbgmsg
+            logger.debug("%s", dbgmsg)
             self._print_status()

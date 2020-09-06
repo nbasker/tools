@@ -3,14 +3,17 @@
 import os
 import random
 import asyncio
+import base_logger
 import mq
 import producer
 import consumer
 
+logger = base_logger.getlogger(__name__)
+
 async def aio_sessions(loop):
     '''Create session to concurrently fetch tickers.'''
     procid = os.getpid()
-    print(f'Pid[{procid}]: asyncio session...')
+    logger.info("Pid[%d]: asyncio session...", procid)
 
     # Create message queue, producers and consumers
     mqueue = mq.MsgQueue(retention=30, cleanfreq=10)
@@ -50,14 +53,14 @@ async def aio_sessions(loop):
     await asyncio.gather(*producer_tasks)
 
     # Cancel consumers and message queue clean task
-    print("Producers completed, give few minutes for consumers")
+    logger.info("Producers completed, give few minutes for consumers")
     await asyncio.sleep(120)
     for task in tasks:
         task.cancel()
     try:
         await asyncio.gather(*tasks)
     except asyncio.CancelledError:
-        print("Consumer cancelled now")
+        logger.info("Consumer cancelled now")
 
 def main():
     '''Main entry function'''

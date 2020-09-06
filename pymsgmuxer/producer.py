@@ -5,6 +5,9 @@ import random
 import asyncio
 from abc import ABC, abstractmethod
 from datetime import datetime
+import base_logger
+
+logger = base_logger.getlogger(__name__)
 
 class Producer(ABC):
     '''Producer/Publisher base class'''
@@ -35,13 +38,13 @@ class InMemProducer(Producer):
         '''Put message into queue'''
         rval = self._mq.put(msgid, msg)
         if not rval:
-            print(f'{self._pname} put message failed id: {msgid}')
+            logger.error("%s put message failed id: %d", self._pname, msgid)
 
     async def produce(self):
         '''Process function doing main work of producing messages'''
         procid = os.getpid()
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
-        print(f'{tstamp}: Pid[{procid}] {self._pname} begins...')
+        logger.info("%s: Pid[%d] %s begins...", tstamp, procid, self._pname)
         low, high = self._rw
 
         for _ in range(self._num_msgs):
@@ -54,4 +57,5 @@ class InMemProducer(Producer):
             self.put_msg(msgid=msgid, msg=msg)
 
         tstamp = datetime.utcnow().strftime("%a, %d %b %Y %H:%M:%S.%f")
-        print(f'{tstamp}: Pid[{procid}] {self._pname} done, generated {self._num_msgs} msgs')
+        logger.info("%s: Pid[%d] %s done, generated %d msgs",
+                    tstamp, procid, self._pname, self._num_msgs)
