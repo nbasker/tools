@@ -3,6 +3,7 @@ package main
 import (
 	"container/list"
 	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"strconv"
@@ -103,7 +104,7 @@ func (m *MsgQueue) Get(cid string, ci *consumerInfo) (*MsgNode, bool) {
 	if ci.lastnode == nil {
 		e := m.msglist.Front()
 		if e == nil {
-			// fmt.Printf("Consumer %s, no message in queue\n", cid)
+			// log.Printf("Consumer %s, no message in queue\n", cid)
 			return nil, false
 		}
 		ci.lastnode = e
@@ -114,7 +115,7 @@ func (m *MsgQueue) Get(cid string, ci *consumerInfo) (*MsgNode, bool) {
 
 	// If the next node is nil, return nothing
 	if ne == nil {
-		// fmt.Printf("Consumer %s, no new messages\n", cid)
+		// log.Printf("Consumer %s, no new messages\n", cid)
 		return nil, false
 	}
 
@@ -128,13 +129,13 @@ func (m *MsgQueue) RecvFromProducers() {
 
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
-	fmt.Printf("%s: Pid[%d] MsgQueue.RecvFromProducers() begins...\n", tstamp, procid)
+	log.Printf("%s: Pid[%d] MsgQueue.RecvFromProducers() begins...\n", tstamp, procid)
 
 	for {
 		m.Lock()
 
 		nump := len(m.pinfo)
-		// fmt.Printf("Num producers = %d\n", nump)
+		// log.Printf("Num producers = %d\n", nump)
 		cases := make([]reflect.SelectCase, nump+1)
 		pids := make([]string, nump+1)
 		i := 0
@@ -150,7 +151,7 @@ func (m *MsgQueue) RecvFromProducers() {
 
 			for i = 0; i < m.bulkcount; i++ {
 				idx, v, ok := reflect.Select(cases)
-				// fmt.Printf("reflect.Select(): idx=%d, ok=%t\n", idx, ok)
+				// log.Printf("reflect.Select(): idx=%d, ok=%t\n", idx, ok)
 				if ok && idx != nump {
 					var mnode MsgNode
 					mnode = v.Interface().(MsgNode)
@@ -161,7 +162,7 @@ func (m *MsgQueue) RecvFromProducers() {
 		}
 
 		m.Unlock()
-		// fmt.Printf("Pid[%d] MsgQueue.RecvFromProducers() msg count = %d\n", procid, m.seqid)
+		// log.Printf("Pid[%d] MsgQueue.RecvFromProducers() msg count = %d\n", procid, m.seqid)
 		// time.Sleep(1 * time.Second)
 	}
 }
@@ -171,25 +172,25 @@ func (m *MsgQueue) SendToConsumers() {
 
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
-	fmt.Printf("%s: Pid[%d] MsgQueue.SendToConsumers() begins...\n", tstamp, procid)
+	log.Printf("%s: Pid[%d] MsgQueue.SendToConsumers() begins...\n", tstamp, procid)
 
 	for {
 		m.Lock()
 		// From message q, send to consumer channel
 		for cid, ci := range m.cinfo {
-			// fmt.Printf("%s: checking for msg to send to consumer\n", cid)
+			// log.Printf("%s: checking for msg to send to consumer\n", cid)
 			mnode, ok := m.Get(cid, ci)
 			if ok {
 				ci.pcount++
 				ci.mch <- *mnode
-				// fmt.Printf("%s: sending ccount=%d\n", cid, ci.pcount)
+				// log.Printf("%s: sending ccount=%d\n", cid, ci.pcount)
 			}
 		}
 
 		/***
-		fmt.Printf("Pid[%d] MsgQueue.SendToConsumers() msg count = %d\n", procid, m.seqid)
+		log.Printf("Pid[%d] MsgQueue.SendToConsumers() msg count = %d\n", procid, m.seqid)
 		for cid, ci := range m.cinfo {
-			fmt.Printf("%s: sent ccount=%d\n", cid, ci.pcount)
+			log.Printf("%s: sent ccount=%d\n", cid, ci.pcount)
 		}
 		time.Sleep(1 * time.Second)
 		***/
@@ -203,11 +204,11 @@ func (m *MsgQueue) RegisterConsumer(cid string, ch chan MsgNode) bool {
 	defer m.Unlock()
 	_, ok := m.cinfo[cid]
 	if ok {
-		fmt.Printf("Consumer %s already registered\n", cid)
+		log.Printf("Consumer %s already registered\n", cid)
 		return false
 	}
 	m.cinfo[cid] = newConsumerInfo(ch)
-	fmt.Printf("Consumer %s registration successful\n", cid)
+	log.Printf("Consumer %s registration successful\n", cid)
 	return true
 }
 
@@ -219,7 +220,7 @@ func (m *MsgQueue) UnregisterConsumer(cid string) {
 	if ok {
 		close(ci.mch)
 		delete(m.cinfo, cid)
-		fmt.Printf("Consumer %s unregistration successful\n", cid)
+		log.Printf("Consumer %s unregistration successful\n", cid)
 	}
 }
 
@@ -229,11 +230,11 @@ func (m *MsgQueue) RegisterProducer(pid string, ch chan MsgNode) bool {
 	defer m.Unlock()
 	_, ok := m.pinfo[pid]
 	if ok {
-		fmt.Printf("Producer %s already registered\n", pid)
+		log.Printf("Producer %s already registered\n", pid)
 		return false
 	}
 	m.pinfo[pid] = newProducerInfo(ch)
-	fmt.Printf("Producer %s registration successful\n", pid)
+	log.Printf("Producer %s registration successful\n", pid)
 	return true
 }
 
@@ -244,27 +245,27 @@ func (m *MsgQueue) UnregisterProducer(pid string) {
 	_, ok := m.pinfo[pid]
 	if ok {
 		delete(m.pinfo, pid)
-		fmt.Printf("Producer %s unregistration successful\n", pid)
+		log.Printf("Producer %s unregistration successful\n", pid)
 	}
 }
 
 // PrintStats gives MsgQueue status
 func (m *MsgQueue) PrintStats() {
-	fmt.Println("Msg Queue Status:")
-	fmt.Printf("total = %d, current = %d\n", m.seqid, m.currcnt)
+	log.Println("Msg Queue Status:")
+	log.Printf("total = %d, current = %d\n", m.seqid, m.currcnt)
 	/***
 	for e := m.msglist.Front(); e != nil; e = e.Next() {
-		fmt.Printf("%s\n", e.Value.(*MsgNode).PrintMsgNodeStr())
+		log.Printf("%s\n", e.Value.(*MsgNode).PrintMsgNodeStr())
 	}
 	***/
-	fmt.Printf("consumer count = %d\n", len(m.cinfo))
+	log.Printf("consumer count = %d\n", len(m.cinfo))
 	/***
 	for cid, ci := range m.cinfo {
 		s := ""
 		if ci.lastnode != nil {
 			s = ci.lastnode.Value.(*MsgNode).PrintMsgNodeStr()
 		}
-		fmt.Printf("%s: count=%d %s\n", cid, ci.pcount, s)
+		log.Printf("%s: count=%d %s\n", cid, ci.pcount, s)
 	}
 	***/
 }
@@ -289,7 +290,7 @@ func (m *MsgQueue) isConsumed(dnode *list.Element) (bool, string) {
 func (m *MsgQueue) CleanQueue() {
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
-	fmt.Printf("%s: Pid[%d] MsgQueue.CleanQueue() begins...\n", tstamp, procid)
+	log.Printf("%s: Pid[%d] MsgQueue.CleanQueue() begins...\n", tstamp, procid)
 
 	ticker := time.NewTicker(time.Second * time.Duration(m.cleanfreq))
 	for ; true; <-ticker.C {
@@ -316,7 +317,7 @@ func (m *MsgQueue) CleanQueue() {
 			if !allconsume {
 				/*** No Print in lock section
 				mnode := e.Value.(*MsgNode)
-				fmt.Printf("%s yet to consume %s", cids, mnode.PrintMsgNodeStr())
+				log.Printf("%s yet to consume %s", cids, mnode.PrintMsgNodeStr())
 				***/
 				break
 			}
@@ -326,7 +327,7 @@ func (m *MsgQueue) CleanQueue() {
 			m.currcnt--
 		}
 		m.Unlock()
-		// fmt.Printf("Removing %d nodes, retention time %d\n", rcount, rtime)
+		// log.Printf("Removing %d nodes, retention time %d\n", rcount, rtime)
 		m.PrintStats()
 	}
 }
@@ -363,18 +364,18 @@ func (c *ConsumerFileWriter) Consume() bool {
 	defer c.wg.Done()
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
-	fmt.Printf("%s: Pid[%d] %s begins...\n", tstamp, procid, c.cname)
+	log.Printf("%s: Pid[%d] %s begins...\n", tstamp, procid, c.cname)
 	c.mq.RegisterConsumer(c.cname, c.mch)
 
 	f, err := os.Create(c.cname)
 	if err != nil {
-		fmt.Println("Error opening file ", err)
+		log.Println("Error opening file ", err)
 	}
 
 	for m := range c.mch {
 		fmt.Fprintf(f, "%s: %s", c.cname, m.PrintMsgNodeStr())
 	}
-	fmt.Printf("consume for %s : Done\n", c.cname)
+	log.Printf("consume for %s : Done\n", c.cname)
 	return true
 }
 
@@ -415,7 +416,7 @@ func (p *InMemProducer) Produce() bool {
 	defer p.wg.Done()
 	procid := os.Getpid()
 	tstamp := time.Now().UTC().String()
-	fmt.Printf("%s: Pid[%d] %s begins...\n", tstamp, procid, p.pname)
+	log.Printf("%s: Pid[%d] %s begins...\n", tstamp, procid, p.pname)
 	p.mq.RegisterProducer(p.pname, p.mch)
 
 	for i := 0; i < p.totalmsgs; i++ {
@@ -426,7 +427,7 @@ func (p *InMemProducer) Produce() bool {
 		mnode := NewMsgNode(utctimens, msgstr)
 		p.mch <- *mnode
 	}
-	fmt.Printf("produce for %s : Done\n", p.pname)
+	log.Printf("produce for %s : Done\n", p.pname)
 	return true
 }
 
@@ -455,12 +456,12 @@ func main() {
 	cwg.Add(1)
 	con3 := NewConsumerFileWriter(3, mq, &cwg)
 
-	fmt.Println("Starting MsgQueue go routines...")
+	log.Println("Starting MsgQueue go routines...")
 	go mq.RecvFromProducers()
 	go mq.SendToConsumers()
 	go mq.CleanQueue()
 
-	fmt.Println("Starting regular producer/consumer go routines...")
+	log.Println("Starting regular producer/consumer go routines...")
 	go pro1.Produce()
 	go pro2.Produce()
 	go pro3.Produce()
@@ -468,9 +469,9 @@ func main() {
 	go con2.Consume()
 	go con3.Consume()
 
-	fmt.Println("Waiting for all producers to complete...")
+	log.Println("Waiting for all producers to complete...")
 	pwg.Wait()
-	fmt.Println("Producers done, waiting for 20 seconds for consumers process...")
+	log.Println("Producers done, waiting for 20 seconds for consumers process...")
 	pro1.Close()
 	pro2.Close()
 	pro3.Close()
@@ -479,10 +480,10 @@ func main() {
 	con2.Close()
 	con3.Close()
 	cwg.Wait()
-	fmt.Println("Consumers done...")
+	log.Println("Consumers done...")
 
-	fmt.Println("Printing queue status and ending...")
+	log.Println("Printing queue status and ending...")
 	time.Sleep(2 * time.Second)
 	mq.PrintStats()
-	fmt.Println("Ending message broker")
+	log.Println("Ending message broker")
 }
