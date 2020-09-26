@@ -12,14 +12,6 @@ logger = base_logger.getlogger(__name__)
 
 class Consumer(ABC):
     '''Consumer/Subscriber base class'''
-
-    @abstractmethod
-    async def consume(self):
-        '''consume abstract method for consuming data'''
-        pass
-
-class ConsumerFileWriter(Consumer):
-    '''Consumer/Subscriber module'''
     def __init__(self, instid, msgq, rwindow):
         self._instid = instid
         self._mq = msgq
@@ -33,6 +25,16 @@ class ConsumerFileWriter(Consumer):
         if msg:
             self._mcount += 1
         return msg
+
+    @abstractmethod
+    async def consume(self):
+        '''consume abstract method for consuming data'''
+        pass
+
+class ConsumerFileWriter(Consumer):
+    '''Consumer/Subscriber module'''
+    def __init__(self, instid, msgq, rwindow):
+        super(ConsumerFileWriter, self).__init__(instid, msgq, rwindow)
 
     async def consume(self):
         '''The process() function doing the main work of consumer'''

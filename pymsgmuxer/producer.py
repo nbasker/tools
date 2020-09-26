@@ -11,6 +11,18 @@ logger = base_logger.getlogger(__name__)
 
 class Producer(ABC):
     '''Producer/Publisher base class'''
+    def __init__(self, instid, nmsgs, msgq, rwindow):
+        self._instid = instid
+        self._num_msgs = nmsgs
+        self._mq = msgq
+        self._rw = rwindow
+        self._pname = "producer_{}".format(instid)
+
+    def put_msg(self, msgid, msg):
+        '''Put message into queue'''
+        rval = self._mq.put(msgid, msg)
+        if not rval:
+            logger.error("%s put message failed id: %d", self._pname, msgid)
 
     @abstractmethod
     async def produce(self):
@@ -18,13 +30,9 @@ class Producer(ABC):
         pass
 
 class InMemProducer(Producer):
-    '''Producer/Publisher module'''
+    '''In Memory Producer/Publisher module'''
     def __init__(self, instid, nmsgs, msgq, rwindow):
-        self._instid = instid
-        self._num_msgs = nmsgs
-        self._mq = msgq
-        self._rw = rwindow
-        self._pname = "producer_{}".format(instid)
+        super(InMemProducer, self).__init__(instid, nmsgs, msgq, rwindow)
 
     def create_msg(self):
         '''Create message'''
@@ -33,12 +41,6 @@ class InMemProducer(Producer):
         utcnsstr = utctime.strftime("%a, %d %b %Y %H:%M:%S.%f")
         msg = "hello from {} @ {}".format(self._pname, utcnsstr)
         return utcns, msg
-
-    def put_msg(self, msgid, msg):
-        '''Put message into queue'''
-        rval = self._mq.put(msgid, msg)
-        if not rval:
-            logger.error("%s put message failed id: %d", self._pname, msgid)
 
     async def produce(self):
         '''Process function doing main work of producing messages'''
