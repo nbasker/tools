@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -157,6 +158,7 @@ func (m *MsgQueue) RecvFromProducers() {
 					mnode = v.Interface().(MsgNode)
 					m.Put(pids[idx], &mnode)
 					m.pinfo[pids[idx]].pcount++
+					// log.Printf("%s: receiving pcount=%d\n", pids[idx], m.pinfo[pids[idx]].pcount)
 				}
 			}
 		}
@@ -426,6 +428,10 @@ func (p *InMemProducer) Produce() bool {
 		msgstr := "hello from " + p.pname + " [" + strconv.Itoa(i) + "] @ " + utctimestr
 		mnode := NewMsgNode(utctimens, msgstr)
 		p.mch <- *mnode
+		if i%10 == 0 {
+			// log.Printf("%s giving up\n", p.pname)
+			runtime.Gosched()
+		}
 	}
 	log.Printf("produce for %s : Done\n", p.pname)
 	return true
@@ -462,19 +468,19 @@ func main() {
 	go mq.CleanQueue()
 
 	log.Println("Starting regular producer/consumer go routines...")
-	go pro1.Produce()
-	go pro2.Produce()
-	go pro3.Produce()
 	go con1.Consume()
 	go con2.Consume()
 	go con3.Consume()
+	go pro1.Produce()
+	go pro2.Produce()
+	go pro3.Produce()
 
 	log.Println("Waiting for all producers to complete...")
 	pwg.Wait()
-	log.Println("Producers done, waiting for 20 seconds for consumers process...")
 	pro1.Close()
 	pro2.Close()
 	pro3.Close()
+	log.Println("Producers closed, waiting for for consumers to process...")
 	time.Sleep(60 * time.Second)
 	con1.Close()
 	con2.Close()
