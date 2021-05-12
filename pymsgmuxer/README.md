@@ -12,4 +12,4 @@ Each producer, consumer operates as an async-coroutine. The message queue cleane
 
 The producer's produce() function can be implemented by each subclass and can fetch the data from memory, file-system, socket or any other method. Similarly the consumer's consume() function is independent to the operation needed. 
 
-The producer's, consumer's and message-queue can be used in an async session to multiplex the messages.
+The producer's, consumer's and message-queue can be used in an async session.
