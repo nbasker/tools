@@ -17,4 +17,4 @@ The mbrok.py implements a test asyncio session that installs producers, consumer
 
 ## Usage
 
-The mbrok.py shows an example of how the message queue can be used. It is recommended that virtual environment and python3 are used to execute. Once in the virutual environment, the command "python3 mbrok.py" should execute.
+The mbrok.py shows an example of how the message queue can be used. It is recommended that virtual environment and python3 are used to execute. Once in the virutual environment, the command "python3 mbrok.py" should start the execution.
