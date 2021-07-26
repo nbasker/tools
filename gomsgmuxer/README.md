@@ -23,4 +23,5 @@ The mb.qo gives an example of how the message queue can be used in conjunction w
 This can be executed using the following command, upon execution there are messages put out that trace the execution flow.
 
 go build -o msgbroker
+
 ./msgbroker
