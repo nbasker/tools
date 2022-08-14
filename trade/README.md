@@ -76,6 +76,30 @@ The above diagram shows the high level design and message flow of the system.
 7. The Matcher is cleaning up the orders if they go beyond a time. The clean currently loops and can become expensive. Need to investigate a way to optimize it.
 8. Test is only on API and matcher and only on a few sample functions. This needs to be enhanced for better code coverage.
 
+### Testing Strategy
+
+For unit testing, using the go test framework. A sample testing output provided. Further function level unit testing needs to be added. Additionally coverage for storage and API packages have to be implemented.
+
+```
+go test -count=1 -v ./...
+?       github.com/nbasker/tools/trade  [no test files]
+?       github.com/nbasker/tools/trade/api      [no test files]
+=== RUN   Test_Matcher_ExecuteOrders
+=== RUN   Test_Matcher_ExecuteOrders/MatchingPrice,_QuantityEqual
+=== RUN   Test_Matcher_ExecuteOrders/MatchingPrice,_QuantityUnEqual
+=== RUN   Test_Matcher_ExecuteOrders/NonMatchingPrice
+--- PASS: Test_Matcher_ExecuteOrders (10.00s)
+    --- PASS: Test_Matcher_ExecuteOrders/MatchingPrice,_QuantityEqual (0.00s)
+    --- PASS: Test_Matcher_ExecuteOrders/MatchingPrice,_QuantityUnEqual (5.00s)
+    --- PASS: Test_Matcher_ExecuteOrders/NonMatchingPrice (5.00s)
+PASS
+ok      github.com/nbasker/tools/trade/matcher  10.116s
+?       github.com/nbasker/tools/trade/service  [no test files]
+?       github.com/nbasker/tools/trade/store    [no test files]
+```
+
+A second strategy is using scripts that can generate random orders to simulate real life situations. Multiple instances of these can be run. The final order executed status from the database can be queried and validated.
+
 ### References
 1. Go Web Server Skeleton https://betterprogramming.pub/implementing-a-basic-http-server-using-go-a59b1888359b
 2. JSON Encoder https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
