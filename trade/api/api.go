@@ -25,14 +25,14 @@ type Api interface {
 // apiService defines implementation of the REST Service
 type apiService struct {
 	endpoint string
-	och      chan<- matcher.Order
+	och      chan<- *matcher.Order
 	retrieve store.Store
 	log      *logrus.Logger
 }
 
 // NewApiService returns a new apiService
 func NewApiService(ep string,
-	och chan<- matcher.Order,
+	och chan<- *matcher.Order,
 	retrieve store.Store,
 	log *logrus.Logger,
 ) Api {
@@ -85,6 +85,8 @@ func (a *apiService) PlaceOrder(w http.ResponseWriter, req *http.Request) {
 	order.Id = uuid.New()
 	order.OrderTime = time.Now().UTC()
 	order.Executed = 0
+	order.PlacedQuantity = order.Quantity
+	order.Status = matcher.Placed
 	resp := fmt.Sprintf("Received Order [%s, %s, %d, %d], Id = %s\n",
 		order.Transaction.String(),
 		order.OrderType.String(),
@@ -94,7 +96,7 @@ func (a *apiService) PlaceOrder(w http.ResponseWriter, req *http.Request) {
 
 	a.log.WithFields(logrus.Fields{"details": resp}).Debug("Order Received")
 
-	a.och <- order
+	a.och <- &order
 
 	io.WriteString(w, resp)
 }
@@ -105,6 +107,5 @@ func (a *apiService) GetOrders(w http.ResponseWriter, req *http.Request) {
 		"Path":   req.URL.Path,
 		"Method": req.Method,
 	}).Info("Received")
-	a.retrieve.RetrieveExecutedOrders()
-	io.WriteString(w, "Printing Orders in log\n")
+	io.WriteString(w, a.retrieve.RetrieveExecutedOrders())
 }

@@ -17,13 +17,13 @@ func Start(srvEp string, oTimeout int) {
 
 	log.Debug("service.Start()")
 
-	orders := make(chan matcher.Order)
-	complete := make(chan matcher.Order)
+	orders := make(chan *matcher.Order)
+	complete := make(chan *matcher.Order)
 
 	store := store.NewStorageService(complete, log)
 	go store.StoreCompletedOrders()
 
-	match := matcher.NewMatcherService(orders, oTimeout, log)
+	match := matcher.NewMatcherService(orders, complete, oTimeout, log)
 	go match.ExecuteOrders()
 
 	serve := api.NewApiService(srvEp, orders, store, log)
