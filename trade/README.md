@@ -61,7 +61,10 @@ INFO[0000] Starting to Execute Orders                    OrderTimeout=10
 ### Design
 <img width="664" alt="Trade_DesignDiagram" src="https://user-images.githubusercontent.com/16254163/184537116-9b75c9f9-f574-4547-95d9-fd02cdae4fdf.png">
 
-The above diagram shows the high level design and message flow of the system
+The above diagram shows the high level design and message flow of the system.
+* The API is a net/http based webserver that receives external requests and places them on order write-only channel.
+* The Matcher module is supplied with order (read-only) channel and complete (write-only) channel. It receives orders from order-channel and stores buy orders in buyMap and sell orders in sellMap. The "price" of the order is the key for the map. It matches the buy and sell orders based on price. It takes a timeout parameter and checks for timedout orders. The completed and timedout orders are removed and sent on complete channel.
+* The store module is given complete (read-only) channel. It receives the executed orders and stores them in DB (currently only an in memory map). It exposes a Retrieve() interface to fetch orders stored in the DB.
 
 
 ### References
