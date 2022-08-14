@@ -38,7 +38,7 @@ trade/
 ├─ README.md
 ```
 
-### Run Instructions
+### Usage
 
 The help options available are
 ```
@@ -58,6 +58,22 @@ INFO[0000] Starting to collected completed orders and persist
 INFO[0000] Starting to Execute Orders                    OrderTimeout=10
 ```
 
+Placing an order
+```
+curl -XPOST http://localhost:8000/trade -H 'Content-Type: application/json' -d '{"transaction":1,"quantity":48,"price":534,"order_type":2}'
+Received Order [buy, limit, 48, 534], Id = fb5869c4-364e-477d-bba3-6f8ca710ec5d
+```
+
+Getting Order Status
+```
+curl -XGET http://localhost:8000/orders -H 'Content-Type: application/json'
+Id/Time => [Buy/Sell, Price, Placed, Executed, Left, Status]
+fb5869c4-364e-477d-bba3-6f8ca710ec5d/Sun Aug 14 22:22:27 UTC 2022 => [ buy, 534, 48, 0, 48, timedout ]
+477b508c-7db6-47d8-b1aa-46c8a5652163/Sun Aug 14 22:23:15 UTC 2022 => [ buy, 516, 37, 37, 0, completed ]
+a0b2b42b-bbc6-475e-b038-a49e33f52431/Sun Aug 14 22:23:21 UTC 2022 => [ sell, 514, 14, 14, 0, completed ]
+44fee863-a822-4957-8c41-9eccae542e70/Sun Aug 14 22:23:24 UTC 2022 => [ sell, 511, 21, 21, 0, completed ]
+```
+
 ### Design
 <img width="664" alt="Trade_DesignDiagram" src="https://user-images.githubusercontent.com/16254163/184537116-9b75c9f9-f574-4547-95d9-fd02cdae4fdf.png">
 
@@ -75,6 +91,7 @@ The above diagram shows the high level design and message flow of the system.
 6. Currently store uses a map without lock as it can be read while being written. This needs to be fixed. A database would help as it can store data for future analysis as well.
 7. The Matcher is cleaning up the orders if they go beyond a time. The clean currently loops and can become expensive. Need to investigate a way to optimize it.
 8. Test is only on API and matcher and only on a few sample functions. This needs to be enhanced for better code coverage.
+9. Make the clean trigger time as configurable as its currently hardcoded.
 
 ### Testing Strategy
 
