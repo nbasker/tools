@@ -66,6 +66,15 @@ The above diagram shows the high level design and message flow of the system.
 * The Matcher module is supplied with order (read-only) channel and complete (write-only) channel. It receives orders from order-channel and stores buy orders in buyMap and sell orders in sellMap. The "price" of the order is the key for the map. It matches the buy and sell orders based on price. It takes a timeout parameter and checks for timedout orders. The completed and timedout orders are removed and sent on complete channel.
 * The store module is given complete (read-only) channel. It receives the executed orders and stores them in DB (currently only an in memory map). It exposes a Retrieve() interface to fetch orders stored in the DB.
 
+### Additional Design Considerations
+1. Use of bufferred channels and further examine the size of the buffer-channel so that matcher has a way to store data if it is over-whelmed by requests.
+2. Investigate on how to scale matcher. It is currently running one goroutine. Need to further look if sharding is possible or if a distributed memory store such as memcached or redis would help.
+3. Remove all logging and put on debug mode.
+4. Enable debug hooks so that the in memory data structure can be dumped for investigation purposes.
+5. A clean way to close channel and exit.
+6. Currently store uses a map without lock as it can be read while being written. This needs to be fixed. A database would help as it can store data for future analysis as well.
+7. The Matcher is cleaning up the orders if they go beyond a time. The clean currently loops and can become expensive. Need to investigate a way to optimize it.
+8. Test is only on API and matcher and only on a few sample functions. This needs to be enhanced for better code coverage.
 
 ### References
 1. Go Web Server Skeleton https://betterprogramming.pub/implementing-a-basic-http-server-using-go-a59b1888359b
