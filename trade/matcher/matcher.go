@@ -120,7 +120,7 @@ func (m *matcherService) ExecuteOrders() {
 		select {
 		case o := <-m.och:
 			m.processOrder(o)
-		case <-time.After(15 * time.Second):
+		case <-time.After(5 * time.Second):
 			m.log.Info("Clean Timedout Orders")
 			// m.printLiveOrders()
 			m.cleanTimedoutOrders(Buy)
