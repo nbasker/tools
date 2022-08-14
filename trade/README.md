@@ -6,7 +6,7 @@ The trade order is made of the following inputs.
 * Price
 * OrderType: market or limit
 
-The order status clarified using the following additional fields.
+The order status provided using the following additional fields.
 * Status: placed or completed or timedout
 * ExecutedQuantity
 * OrderTime
@@ -57,6 +57,12 @@ INFO[0000] Starting REST Api Service                     endpoint="localhost:800
 INFO[0000] Starting to collected completed orders and persist 
 INFO[0000] Starting to Execute Orders                    OrderTimeout=10
 ```
+
+### Design
+<img width="664" alt="Trade_DesignDiagram" src="https://user-images.githubusercontent.com/16254163/184537116-9b75c9f9-f574-4547-95d9-fd02cdae4fdf.png">
+
+The above diagram shows the high level design and message flow of the system
+
 
 ### References
 1. Go Web Server Skeleton https://betterprogramming.pub/implementing-a-basic-http-server-using-go-a59b1888359b
